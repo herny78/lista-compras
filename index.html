@@ -6,11 +6,6 @@
   <meta name="theme-color" content="#2563eb">
   <title>Lista de Compras</title>
   <link rel="manifest" href="manifest.json">
-
-  <!-- ══════════════════════════════════════════════════════
-       PASO 1: Reemplazá estos valores con los de tu proyecto
-       Firebase. Ver instrucciones más abajo.
-  ══════════════════════════════════════════════════════════ -->
   <script>
     const FIREBASE_CONFIG = {
       apiKey:            "AIzaSyANK0IgHoath4S8XQzeEfhLkAf0-XfLQrE",
@@ -21,11 +16,8 @@
       appId:             "1:703559588150:web:5f9d478540ab9b278ffb97"
     };
   </script>
-
-  <!-- Firebase SDK (CDN) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -37,11 +29,7 @@
     }
     body { font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
     #app { display:flex; flex-direction:column; min-height:100vh; }
-    header {
-      background:var(--primary); color:#fff; padding:0 1rem; height:56px;
-      display:flex; align-items:center; justify-content:space-between;
-      position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2);
-    }
+    header { background:var(--primary); color:#fff; padding:0 1rem; height:56px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2); }
     header h1 { font-size:1.1rem; font-weight:700; }
     #sync-status { font-size:.75rem; background:rgba(255,255,255,.2); padding:.2rem .65rem; border-radius:12px; }
     nav { background:var(--surface); border-bottom:2px solid var(--border); display:flex; overflow-x:auto; scrollbar-width:none; }
@@ -99,11 +87,15 @@
     .product-list-item:last-child { border-bottom:none; }
     .hist-tienda-block { margin-bottom:1rem; }
     .hist-tienda-title { font-size:.95rem; font-weight:700; color:var(--primary); padding:.4rem .75rem; background:#e8edf5; border:1px solid #94a3b8; border-radius:8px 8px 0 0; border-bottom:2px solid var(--primary); }
-    .hist-row { display:grid; grid-template-columns:85px 1fr 95px 72px 100px; align-items:center; gap:.4rem; padding:.5rem .65rem; border-left:1px solid #94a3b8; border-right:1px solid #94a3b8; border-bottom:1px solid #94a3b8; background:var(--surface); font-size:.83rem; color:var(--text); }
-    .hist-row:last-child { border-radius:0 0 8px 8px; }
-    .hist-row.header { background:#e8edf5; font-size:.73rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#334155; }
-    .hist-price { font-weight:700; color:var(--success); text-align:right; }
-    .hist-marca { color:#475569; font-style:italic; }
+    .hist-card { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; padding:.6rem .75rem; border-left:1px solid #94a3b8; border-right:1px solid #94a3b8; border-bottom:1px solid #94a3b8; background:var(--surface); }
+    .hist-card:last-child { border-radius:0 0 8px 8px; }
+    .hist-card-left { display:flex; flex-direction:column; gap:.18rem; flex:1; min-width:0; }
+    .hist-card-name { font-size:.9rem; font-weight:700; color:var(--text); }
+    .hist-card-meta { font-size:.75rem; color:var(--text-s); }
+    .hist-card-marca { font-size:.75rem; color:#475569; font-style:italic; }
+    .hist-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:.18rem; flex-shrink:0; }
+    .hist-price { font-size:1rem; font-weight:700; color:var(--success); }
+    .hist-date { font-size:.72rem; color:var(--text-s); }
     .tienda-chip { display:inline-flex; align-items:center; gap:.35rem; background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:.3rem .75rem; font-size:.85rem; margin:.2rem; }
     .empty { text-align:center; padding:2rem 1rem; color:var(--text-s); font-size:.9rem; line-height:1.7; }
     #toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(100px); background:#1e293b; color:#fff; padding:.6rem 1.3rem; border-radius:20px; font-size:.875rem; z-index:999; transition:transform .3s; pointer-events:none; }
@@ -115,12 +107,10 @@
   </style>
 </head>
 <body>
-
 <div class="loading-screen" id="loading">
   <div class="spinner"></div>
   <span>Conectando con la nube…</span>
 </div>
-
 <div id="app" style="display:none">
   <header>
     <h1>🛒 Lista de Compras</h1>
@@ -140,228 +130,110 @@
   </main>
 </div>
 <div id="toast"></div>
-
 <script>
 function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-function sinMarca(cat) {
-  const c = (cat||'').toLowerCase();
-  return c.includes('carnicer') || c.includes('verduler') || c.includes('pescader');
-}
-function calcTotal(it) {
-  if (!it.precio || it.estado !== 'comprado') return 0;
-  return it.esOferta ? parseFloat(it.precio) : parseFloat(it.precio) * (parseFloat(it.cantidad)||1);
-}
+function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function sinMarca(cat) { const c=(cat||'').toLowerCase(); return c.includes('carnicer')||c.includes('verduler')||c.includes('pescader'); }
+function calcTotal(it) { if(!it.precio||it.estado!=='comprado') return 0; return it.esOferta?parseFloat(it.precio):parseFloat(it.precio)*(parseFloat(it.cantidad)||1); }
 function fmt(n) { return parseFloat(n||0).toLocaleString('es-AR'); }
-function syncStatus(txt, err) {
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  el.textContent = txt;
-  el.style.background = err ? 'rgba(220,38,38,.4)' : 'rgba(255,255,255,.2)';
-}
+function syncStatus(txt,err) { const el=document.getElementById('sync-status'); if(!el) return; el.textContent=txt; el.style.background=err?'rgba(220,38,38,.4)':'rgba(255,255,255,.2)'; }
 
-let categorias=[], productos=[], tiendas=[], lista=[], historial=[];
-let listenersOk = 0;
+let categorias=[],productos=[],tiendas=[],lista=[],historial=[];
+let listenersOk=0;
 
 firebase.initializeApp(FIREBASE_CONFIG);
-const db = firebase.firestore();
+const db=firebase.firestore();
 
-function onListenerReady() {
-  listenersOk++;
-  if (listenersOk === 5) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('app').style.display = '';
-    render();
-  }
-}
+function onListenerReady() { listenersOk++; if(listenersOk===5){ document.getElementById('loading').style.display='none'; document.getElementById('app').style.display=''; render(); } }
 
-db.collection('categorias').onSnapshot(s => { categorias = s.docs.map(d=>({...d.data(),_id:d.id})); onListenerReady(); render(); syncStatus('✓ Sincronizado'); }, () => syncStatus('⚠ Sin conexión', true));
-db.collection('productos') .onSnapshot(s => { productos  = s.docs.map(d=>({...d.data(),_id:d.id})); onListenerReady(); render(); }, ()=>{});
-db.collection('tiendas')   .onSnapshot(s => { tiendas    = s.docs.map(d=>({...d.data(),_id:d.id})); onListenerReady(); render(); }, ()=>{});
-db.collection('lista')     .onSnapshot(s => { lista      = s.docs.map(d=>({...d.data(),_id:d.id})); onListenerReady(); render(); }, ()=>{});
-db.collection('historial') .onSnapshot(s => { historial  = s.docs.map(d=>({...d.data(),_id:d.id})); onListenerReady(); render(); }, ()=>{});
+db.collection('categorias').onSnapshot(s=>{categorias=s.docs.map(d=>({...d.data(),_id:d.id}));onListenerReady();render();syncStatus('✓ Sincronizado');},()=>syncStatus('⚠ Sin conexión',true));
+db.collection('productos') .onSnapshot(s=>{productos =s.docs.map(d=>({...d.data(),_id:d.id}));onListenerReady();render();},()=>{});
+db.collection('tiendas')   .onSnapshot(s=>{tiendas   =s.docs.map(d=>({...d.data(),_id:d.id}));onListenerReady();render();},()=>{});
+db.collection('lista')     .onSnapshot(s=>{lista     =s.docs.map(d=>({...d.data(),_id:d.id}));onListenerReady();render();},()=>{});
+db.collection('historial') .onSnapshot(s=>{historial =s.docs.map(d=>({...d.data(),_id:d.id}));onListenerReady();render();},()=>{});
 
-async function fsSet(col, id, data) { await db.collection(col).doc(id).set(data); }
-async function fsDel(col, id)       { await db.collection(col).doc(id).delete(); }
+async function fsSet(col,id,data){await db.collection(col).doc(id).set(data);}
+async function fsDel(col,id){await db.collection(col).doc(id).delete();}
 
-let tabActual = 'lista';
-function switchTab(tab) {
-  tabActual = tab;
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
-  ['lista','catalogo','tiendas','historial'].forEach(t => document.getElementById('tab-'+t).hidden=(t!==tab));
-  render();
-}
-document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
+let tabActual='lista';
+function switchTab(tab){tabActual=tab;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));['lista','catalogo','tiendas','historial'].forEach(t=>document.getElementById('tab-'+t).hidden=(t!==tab));render();}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 
-// ── LISTA ────────────────────────────────────────────────────
-function renderLista() {
-  const wrap = document.getElementById('tab-lista');
-  const total = lista.reduce((s,i)=>s+calcTotal(i),0);
-  const grupos = {};
-  lista.forEach(it => { const c=it.categoria||'Sin categoría'; if(!grupos[c])grupos[c]=[]; grupos[c].push(it); });
-  const tiendaOpts = sel => `<option value="">— Tienda —</option>${tiendas.map(t=>`<option value="${t._id}" ${t._id===sel?'selected':''}>${t.nombre}</option>`).join('')}`;
-  const gruposHTML = Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,items])=>{
-    const tg = items.find(i=>i.tiendaId)?.tiendaId||'';
-    const rows = items.map(it=>{
-      const icono = it.estado==='comprado'?'✅':'⬜';
-      const sig   = it.estado==='comprado'?'falta':'comprado';
-      let ctrl = '';
-      if (it.estado==='comprado') {
-        const mf = sinMarca(cat)?'': `<input class="inp-marca" type="text" placeholder="Marca" value="${it.marca||''}" onchange="setMarca('${it._id}',this.value)">`;
-        const fl = it.esOferta ? `${it.cantidad} ${it.unidad||'u'} = $ ${fmt(it.precio)} <strong>(oferta)</strong>` : `${it.cantidad} ${it.unidad||'u'} × $ ${fmt(it.precio||0)} = $ ${fmt(calcTotal(it))}`;
-        ctrl = `<div class="item-controls">
-          <input class="inp-cant" type="number" value="${it.cantidad||1}" min="1" step="1" onchange="setCantidad('${it._id}',this.value)" onclick="this.select()">
-          <span class="unidad-label">${it.unidad||'u'}</span>
-          <input class="inp-precio" type="number" value="${it.precio||''}" placeholder="$ precio" min="0" step="1" onchange="setPrecio('${it._id}',this.value)" onclick="this.select()">
-          <button class="oferta-btn ${it.esOferta?'activo':''}" onclick="toggleOferta('${it._id}')">⚡ Oferta</button>
-          ${mf}</div><div class="formula-label">${fl}</div>`;
-      } else {
-        ctrl = `<div class="item-qty-label">${it.cantidad} ${it.unidad||'u'}</div>`;
-      }
-      return `<div class="item-row ${it.estado}" data-id="${it._id}">
-        <button class="estado-btn ${it.estado}" onclick="cambiarEstado('${it._id}','${sig}')">${icono}</button>
-        <div class="item-body"><div class="item-name">${it.nombre}</div>${ctrl}</div>
-        <button class="btn-remove" onclick="quitarItem('${it._id}')">✕</button>
-      </div>`;
+function renderLista(){
+  const wrap=document.getElementById('tab-lista');
+  const total=lista.reduce((s,i)=>s+calcTotal(i),0);
+  const grupos={};
+  lista.forEach(it=>{const c=it.categoria||'Sin categoría';if(!grupos[c])grupos[c]=[];grupos[c].push(it);});
+  const tiendaOpts=sel=>`<option value="">— Tienda —</option>${tiendas.map(t=>`<option value="${t._id}" ${t._id===sel?'selected':''}>${t.nombre}</option>`).join('')}`;
+  const gruposHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,items])=>{
+    const tg=items.find(i=>i.tiendaId)?.tiendaId||'';
+    const rows=items.map(it=>{
+      const icono=it.estado==='comprado'?'✅':'⬜';
+      const sig=it.estado==='comprado'?'falta':'comprado';
+      let ctrl='';
+      if(it.estado==='comprado'){
+        const mf=sinMarca(cat)?'':`<input class="inp-marca" type="text" placeholder="Marca" value="${it.marca||''}" onchange="setMarca('${it._id}',this.value)">`;
+        const fl=it.esOferta?`${it.cantidad} ${it.unidad||'u'} = $ ${fmt(it.precio)} <strong>(oferta)</strong>`:`${it.cantidad} ${it.unidad||'u'} × $ ${fmt(it.precio||0)} = $ ${fmt(calcTotal(it))}`;
+        ctrl=`<div class="item-controls"><input class="inp-cant" type="number" value="${it.cantidad||1}" min="1" step="1" onchange="setCantidad('${it._id}',this.value)" onclick="this.select()"><span class="unidad-label">${it.unidad||'u'}</span><input class="inp-precio" type="number" value="${it.precio||''}" placeholder="$ precio" min="0" step="1" onchange="setPrecio('${it._id}',this.value)" onclick="this.select()"><button class="oferta-btn ${it.esOferta?'activo':''}" onclick="toggleOferta('${it._id}')">⚡ Oferta</button>${mf}</div><div class="formula-label">${fl}</div>`;
+      }else{ctrl=`<div class="item-qty-label">${it.cantidad} ${it.unidad||'u'}</div>`;}
+      return `<div class="item-row ${it.estado}" data-id="${it._id}"><button class="estado-btn ${it.estado}" onclick="cambiarEstado('${it._id}','${sig}')">${icono}</button><div class="item-body"><div class="item-name">${it.nombre}</div>${ctrl}</div><button class="btn-remove" onclick="quitarItem('${it._id}')">✕</button></div>`;
     }).join('');
-    return `<div class="category-group">
-      <div class="category-header">
-        <span class="category-title">📂 ${cat}</span>
-        <select class="cat-tienda-sel" onchange="setTiendaCategoria('${cat}',this.value)">${tiendaOpts(tg)}</select>
-      </div>${rows}</div>`;
+    return `<div class="category-group"><div class="category-header"><span class="category-title">📂 ${cat}</span><select class="cat-tienda-sel" onchange="setTiendaCategoria('${cat}',this.value)">${tiendaOpts(tg)}</select></div>${rows}</div>`;
   }).join('');
-  const enLista = new Set(lista.map(i=>i.productoId));
-  const prodOpts = productos.filter(p=>!enLista.has(p._id)).sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>`<option value="${p._id}">${p.nombre} (${p.categoria})</option>`).join('');
-  wrap.innerHTML = `
-    <div id="total-bar"><span class="label">Total gastado</span><span class="amount">$ ${fmt(total)}</span></div>
-    <div class="card"><h2>Agregar a la lista</h2>
-      <div class="form-row">
-        <div class="form-group"><label>Producto</label>
-          <select id="sel-prod"><option value="">— Seleccioná un producto —</option>${prodOpts}</select></div>
-        <div class="form-group" style="max-width:90px"><label>Cantidad</label>
-          <input id="inp-cant-agregar" type="number" value="1" min="1" step="1"></div>
-        <div class="form-group" style="flex:0"><label>&nbsp;</label>
-          <button class="btn btn-primary" onclick="agregarALista()">+ Agregar</button></div>
-      </div>
-    </div>
-    ${lista.length===0?'<div class="empty">La lista está vacía.<br>Primero cargá productos en <strong>Catálogo</strong>,<br>luego volvé acá y agregálos.</div>':gruposHTML}
-    ${lista.length>0?`<div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="limpiarComprados()">✓ Limpiar comprados</button>
-      <button class="btn btn-danger btn-sm" onclick="vaciarLista()">🗑 Vaciar lista</button></div>`:''}`;
+  const enLista=new Set(lista.map(i=>i.productoId));
+  const prodOpts=productos.filter(p=>!enLista.has(p._id)).sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>`<option value="${p._id}">${p.nombre} (${p.categoria})</option>`).join('');
+  wrap.innerHTML=`<div id="total-bar"><span class="label">Total gastado</span><span class="amount">$ ${fmt(total)}</span></div><div class="card"><h2>Agregar a la lista</h2><div class="form-row"><div class="form-group"><label>Producto</label><select id="sel-prod"><option value="">— Seleccioná un producto —</option>${prodOpts}</select></div><div class="form-group" style="max-width:90px"><label>Cantidad</label><input id="inp-cant-agregar" type="number" value="1" min="1" step="1"></div><div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarALista()">+ Agregar</button></div></div></div>${lista.length===0?'<div class="empty">La lista está vacía.<br>Primero cargá productos en <strong>Catálogo</strong>,<br>luego volvé acá y agregálos.</div>':gruposHTML}${lista.length>0?`<div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="limpiarComprados()">✓ Limpiar comprados</button><button class="btn btn-danger btn-sm" onclick="vaciarLista()">🗑 Vaciar lista</button></div>`:''}`;
 }
 
-window.agregarALista = async ()=>{
-  const prodId=document.getElementById('sel-prod').value;
-  if(!prodId) return toast('Seleccioná un producto');
-  const prod=productos.find(p=>p._id===prodId); if(!prod) return;
-  const cant=parseInt(document.getElementById('inp-cant-agregar').value)||1;
-  await fsSet('lista',uid(),{productoId:prod._id,nombre:prod.nombre,categoria:prod.categoria,unidad:prod.unidad,cantidad:cant,estado:'falta',precio:'',marca:'',esOferta:false,tiendaId:''});
-  toast('Agregado a la lista');
-};
-window.cambiarEstado = async(id,s)=>{ const it=lista.find(i=>i._id===id); if(it) await fsSet('lista',id,{...it,estado:s}); };
-window.setCantidad   = async(id,v)=>{ const it=lista.find(i=>i._id===id); if(!it) return; const n={...it,cantidad:parseInt(v)||1}; await fsSet('lista',id,n); await guardarHistorial(id,n); };
-window.setPrecio     = async(id,v)=>{ const it=lista.find(i=>i._id===id); if(!it) return; const n={...it,precio:parseFloat(v)||0}; await fsSet('lista',id,n); await guardarHistorial(id,n); };
-window.toggleOferta  = async(id)=>  { const it=lista.find(i=>i._id===id); if(!it) return; const n={...it,esOferta:!it.esOferta}; await fsSet('lista',id,n); await guardarHistorial(id,n); };
-window.setMarca      = async(id,v)=>{ const it=lista.find(i=>i._id===id); if(!it) return; await fsSet('lista',id,{...it,marca:v.trim()}); const h=historial.find(x=>x.sesionId===id); if(h) await fsSet('historial',h._id,{...h,marca:v.trim()}); };
-window.setTiendaCategoria = async(cat,tid)=>{
-  const items=lista.filter(i=>i.categoria===cat);
-  await Promise.all(items.map(it=>fsSet('lista',it._id,{...it,tiendaId:tid})));
-  const hs=historial.filter(h=>items.some(i=>i._id===h.sesionId));
-  await Promise.all(hs.map(h=>fsSet('historial',h._id,{...h,tiendaId:tid})));
-};
-window.quitarItem        = async id=>{ await fsDel('lista',id); toast('Quitado'); };
-window.limpiarComprados  = async ()=>{ const c=lista.filter(i=>i.estado==='comprado'); await Promise.all(c.map(i=>fsDel('lista',i._id))); toast(`${c.length} eliminados`); };
-window.vaciarLista       = async ()=>{ if(!confirm('¿Vaciar toda la lista?')) return; await Promise.all(lista.map(i=>fsDel('lista',i._id))); toast('Lista vaciada'); };
+window.agregarALista=async()=>{const prodId=document.getElementById('sel-prod').value;if(!prodId)return toast('Seleccioná un producto');const prod=productos.find(p=>p._id===prodId);if(!prod)return;const cant=parseInt(document.getElementById('inp-cant-agregar').value)||1;await fsSet('lista',uid(),{productoId:prod._id,nombre:prod.nombre,categoria:prod.categoria,unidad:prod.unidad,cantidad:cant,estado:'falta',precio:'',marca:'',esOferta:false,tiendaId:''});toast('Agregado a la lista');};
+window.cambiarEstado=async(id,s)=>{const it=lista.find(i=>i._id===id);if(it)await fsSet('lista',id,{...it,estado:s});};
+window.setCantidad=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,cantidad:parseInt(v)||1};await fsSet('lista',id,n);await guardarHistorial(id,n);};
+window.setPrecio=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,precio:parseFloat(v)||0};await fsSet('lista',id,n);await guardarHistorial(id,n);};
+window.toggleOferta=async(id)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,esOferta:!it.esOferta};await fsSet('lista',id,n);await guardarHistorial(id,n);};
+window.setMarca=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;await fsSet('lista',id,{...it,marca:v.trim()});const h=historial.find(x=>x.sesionId===id);if(h)await fsSet('historial',h._id,{...h,marca:v.trim()});};
+window.setTiendaCategoria=async(cat,tid)=>{const items=lista.filter(i=>i.categoria===cat);await Promise.all(items.map(it=>fsSet('lista',it._id,{...it,tiendaId:tid})));const hs=historial.filter(h=>items.some(i=>i._id===h.sesionId));await Promise.all(hs.map(h=>fsSet('historial',h._id,{...h,tiendaId:tid})));};
+window.quitarItem=async id=>{await fsDel('lista',id);toast('Quitado');};
+window.limpiarComprados=async()=>{const c=lista.filter(i=>i.estado==='comprado');await Promise.all(c.map(i=>fsDel('lista',i._id)));toast(`${c.length} eliminados`);};
+window.vaciarLista=async()=>{if(!confirm('¿Vaciar toda la lista?'))return;await Promise.all(lista.map(i=>fsDel('lista',i._id)));toast('Lista vaciada');};
 
-async function guardarHistorial(id, it) {
-  if(!it||it.estado!=='comprado'||!it.precio) return;
-  const h=historial.find(x=>x.sesionId===id);
-  await fsSet('historial',h?h._id:uid(),{sesionId:id,productoId:it.productoId,nombre:it.nombre,categoria:it.categoria,precio:it.precio,total:calcTotal(it),cantidad:it.cantidad,unidad:it.unidad||'u',esOferta:it.esOferta||false,marca:it.marca||'',tiendaId:it.tiendaId||'',fecha:new Date().toISOString()});
-}
+async function guardarHistorial(id,it){if(!it||it.estado!=='comprado'||!it.precio)return;const h=historial.find(x=>x.sesionId===id);await fsSet('historial',h?h._id:uid(),{sesionId:id,productoId:it.productoId,nombre:it.nombre,categoria:it.categoria,precio:it.precio,total:calcTotal(it),cantidad:it.cantidad,unidad:it.unidad||'u',esOferta:it.esOferta||false,marca:it.marca||'',tiendaId:it.tiendaId||'',fecha:new Date().toISOString()});}
 
-// ── CATÁLOGO ─────────────────────────────────────────────────
-function renderCatalogo() {
+function renderCatalogo(){
   const wrap=document.getElementById('tab-catalogo');
   const catOpts=categorias.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
   const unOpts=['unidad','kg','g','litro','ml','docena','paquete','otro'].map(u=>`<option value="${u}">${u}</option>`).join('');
-  const grupos={}; productos.forEach(p=>{ if(!grupos[p.categoria])grupos[p.categoria]=[]; grupos[p.categoria].push(p); });
-  const prodHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,prods])=>`
-    <div class="card" style="margin-bottom:.75rem"><h3>📂 ${cat}</h3>
-      ${prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>`
-        <div class="product-list-item">
-          <div><span style="font-weight:600">${p.nombre}</span>
-            ${p.marcaDefault?`<span class="tag gris" style="margin-left:.4rem">${p.marcaDefault}</span>`:''}</div>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span class="tag">${p.unidad}</span>
-            <button class="btn btn-danger btn-sm" onclick="eliminarProducto('${p._id}')">✕</button>
-          </div></div>`).join('')}</div>`).join('');
-  wrap.innerHTML=`
-    <div class="card"><h2>Nueva categoría</h2>
-      <div class="form-row">
-        <div class="form-group"><label>Nombre</label><input id="inp-cat" type="text" placeholder="Ej: Almacén, Limpieza…"></div>
-        <div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarCategoria()">+ Crear</button></div>
-      </div>
-      ${categorias.length>0?`<div style="margin-top:.75rem">${categorias.map(c=>`<span class="tienda-chip">${c.nombre}<button style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.8rem" onclick="eliminarCategoria('${c._id}')">✕</button></span>`).join('')}</div>`:'<p style="margin-top:.5rem;font-size:.8rem;color:var(--text-s)">Creá una categoría primero.</p>'}
-    </div>
-    <div class="card"><h2>Nuevo producto</h2>
-      <div class="form-row">
-        <div class="form-group"><label>Nombre</label><input id="inp-prod" type="text" placeholder="Ej: Azúcar…"></div>
-        <div class="form-group" id="grp-marca-prod"><label>Marca (opcional)</label><input id="inp-marca-prod" type="text" placeholder="Ej: Ledesma"></div>
-        <div class="form-group"><label>Categoría</label><select id="sel-cat-prod" onchange="actualizarMarcaProd()"><option value="">— Elegí —</option>${catOpts}</select></div>
-        <div class="form-group" style="max-width:115px"><label>Unidad</label><select id="sel-unidad">${unOpts}</select></div>
-        <div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarProducto()">+ Agregar</button></div>
-      </div>
-    </div>
-    ${productos.length===0?'<div class="empty">No hay productos todavía.</div>':prodHTML}`;
+  const grupos={};productos.forEach(p=>{if(!grupos[p.categoria])grupos[p.categoria]=[];grupos[p.categoria].push(p);});
+  const prodHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,prods])=>`<div class="card" style="margin-bottom:.75rem"><h3>📂 ${cat}</h3>${prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>`<div class="product-list-item"><div><span style="font-weight:600">${p.nombre}</span>${p.marcaDefault?`<span class="tag gris" style="margin-left:.4rem">${p.marcaDefault}</span>`:''}</div><div style="display:flex;align-items:center;gap:.5rem"><span class="tag">${p.unidad}</span><button class="btn btn-danger btn-sm" onclick="eliminarProducto('${p._id}')">✕</button></div></div>`).join('')}</div>`).join('');
+  wrap.innerHTML=`<div class="card"><h2>Nueva categoría</h2><div class="form-row"><div class="form-group"><label>Nombre</label><input id="inp-cat" type="text" placeholder="Ej: Almacén, Limpieza…"></div><div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarCategoria()">+ Crear</button></div></div>${categorias.length>0?`<div style="margin-top:.75rem">${categorias.map(c=>`<span class="tienda-chip">${c.nombre}<button style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.8rem" onclick="eliminarCategoria('${c._id}')">✕</button></span>`).join('')}</div>`:'<p style="margin-top:.5rem;font-size:.8rem;color:var(--text-s)">Creá una categoría primero.</p>'}</div><div class="card"><h2>Nuevo producto</h2><div class="form-row"><div class="form-group"><label>Nombre</label><input id="inp-prod" type="text" placeholder="Ej: Azúcar…"></div><div class="form-group" id="grp-marca-prod"><label>Marca (opcional)</label><input id="inp-marca-prod" type="text" placeholder="Ej: Ledesma"></div><div class="form-group"><label>Categoría</label><select id="sel-cat-prod" onchange="actualizarMarcaProd()"><option value="">— Elegí —</option>${catOpts}</select></div><div class="form-group" style="max-width:115px"><label>Unidad</label><select id="sel-unidad">${unOpts}</select></div><div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarProducto()">+ Agregar</button></div></div></div>${productos.length===0?'<div class="empty">No hay productos todavía.</div>':prodHTML}`;
 }
-window.actualizarMarcaProd=()=>{ const g=document.getElementById('grp-marca-prod'); if(g) g.style.display=sinMarca(document.getElementById('sel-cat-prod')?.value||'')?'none':''; };
-window.agregarCategoria=async()=>{ const inp=document.getElementById('inp-cat'); const n=inp.value.trim(); if(!n) return toast('Escribí el nombre'); if(categorias.find(c=>c.nombre.toLowerCase()===n.toLowerCase())) return toast('Ya existe'); await fsSet('categorias',uid(),{nombre:n}); inp.value=''; toast('Categoría creada'); };
-window.eliminarCategoria=async id=>{ if(!confirm('¿Eliminar?')) return; await fsDel('categorias',id); };
-window.agregarProducto=async()=>{ const n=document.getElementById('inp-prod').value.trim(); const cat=document.getElementById('sel-cat-prod').value; const u=document.getElementById('sel-unidad').value; const m=sinMarca(cat)?'':(document.getElementById('inp-marca-prod')?.value.trim()||''); if(!n) return toast('Escribí el nombre'); if(!cat) return toast('Seleccioná categoría'); await fsSet('productos',uid(),{nombre:n,marcaDefault:m,categoria:cat,unidad:u}); document.getElementById('inp-prod').value=''; if(document.getElementById('inp-marca-prod')) document.getElementById('inp-marca-prod').value=''; toast('Producto agregado'); };
-window.eliminarProducto=async id=>{ if(!confirm('¿Eliminar?')) return; await fsDel('productos',id); };
+window.actualizarMarcaProd=()=>{const g=document.getElementById('grp-marca-prod');if(g)g.style.display=sinMarca(document.getElementById('sel-cat-prod')?.value||'')?'none':'';};
+window.agregarCategoria=async()=>{const inp=document.getElementById('inp-cat');const n=inp.value.trim();if(!n)return toast('Escribí el nombre');if(categorias.find(c=>c.nombre.toLowerCase()===n.toLowerCase()))return toast('Ya existe');await fsSet('categorias',uid(),{nombre:n});inp.value='';toast('Categoría creada');};
+window.eliminarCategoria=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('categorias',id);};
+window.agregarProducto=async()=>{const n=document.getElementById('inp-prod').value.trim();const cat=document.getElementById('sel-cat-prod').value;const u=document.getElementById('sel-unidad').value;const m=sinMarca(cat)?'':(document.getElementById('inp-marca-prod')?.value.trim()||'');if(!n)return toast('Escribí el nombre');if(!cat)return toast('Seleccioná categoría');await fsSet('productos',uid(),{nombre:n,marcaDefault:m,categoria:cat,unidad:u});document.getElementById('inp-prod').value='';if(document.getElementById('inp-marca-prod'))document.getElementById('inp-marca-prod').value='';toast('Producto agregado');};
+window.eliminarProducto=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('productos',id);};
 
-// ── TIENDAS ──────────────────────────────────────────────────
-function renderTiendas() {
-  document.getElementById('tab-tiendas').innerHTML=`
-    <div class="card"><h2>Nueva tienda / mercado</h2>
-      <div class="form-row">
-        <div class="form-group"><label>Nombre</label><input id="inp-tienda" type="text" placeholder="Ej: Carrefour…"></div>
-        <div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarTienda()">+ Agregar</button></div>
-      </div></div>
-    <div class="card"><h2>Mis tiendas</h2>
-      ${tiendas.length===0?'<div class="empty">No hay tiendas todavía.</div>':tiendas.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(t=>`<div class="product-list-item"><span>🏪 ${t.nombre}</span><button class="btn btn-danger btn-sm" onclick="eliminarTienda('${t._id}')">✕</button></div>`).join('')}
-    </div>`;
+function renderTiendas(){
+  document.getElementById('tab-tiendas').innerHTML=`<div class="card"><h2>Nueva tienda / mercado</h2><div class="form-row"><div class="form-group"><label>Nombre</label><input id="inp-tienda" type="text" placeholder="Ej: Carrefour…"></div><div class="form-group" style="flex:0"><label>&nbsp;</label><button class="btn btn-primary" onclick="agregarTienda()">+ Agregar</button></div></div></div><div class="card"><h2>Mis tiendas</h2>${tiendas.length===0?'<div class="empty">No hay tiendas todavía.</div>':tiendas.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(t=>`<div class="product-list-item"><span>🏪 ${t.nombre}</span><button class="btn btn-danger btn-sm" onclick="eliminarTienda('${t._id}')">✕</button></div>`).join('')}</div>`;
 }
-window.agregarTienda=async()=>{ const inp=document.getElementById('inp-tienda'); const n=inp.value.trim(); if(!n) return toast('Escribí el nombre'); await fsSet('tiendas',uid(),{nombre:n}); inp.value=''; toast('Tienda agregada'); };
-window.eliminarTienda=async id=>{ if(!confirm('¿Eliminar?')) return; await fsDel('tiendas',id); };
+window.agregarTienda=async()=>{const inp=document.getElementById('inp-tienda');const n=inp.value.trim();if(!n)return toast('Escribí el nombre');await fsSet('tiendas',uid(),{nombre:n});inp.value='';toast('Tienda agregada');};
+window.eliminarTienda=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('tiendas',id);};
 
-// ── HISTORIAL ────────────────────────────────────────────────
-function renderHistorial() {
+function renderHistorial(){
   const wrap=document.getElementById('tab-historial');
-  if(!historial.length){ wrap.innerHTML='<div class="empty">Acá vas a ver el historial agrupado por tienda.<br>Completá una compra para empezar.</div>'; return; }
+  if(!historial.length){wrap.innerHTML='<div class="empty">Acá vas a ver el historial agrupado por tienda.<br>Completá una compra para empezar.</div>';return;}
   const pt={};
-  historial.forEach(h=>{ const t=tiendas.find(x=>x._id===h.tiendaId); const k=t?t._id:'__sin__'; const n=t?t.nombre:'Sin tienda'; if(!pt[k])pt[k]={nombre:n,items:[]}; pt[k].items.push(h); });
+  historial.forEach(h=>{const t=tiendas.find(x=>x._id===h.tiendaId);const k=t?t._id:'__sin__';const n=t?t.nombre:'Sin tienda';if(!pt[k])pt[k]={nombre:n,items:[]};pt[k].items.push(h);});
   wrap.innerHTML=Object.entries(pt).sort(([,a],[,b])=>a.nombre.localeCompare(b.nombre)).map(([,g])=>{
     const sorted=g.items.sort((a,b)=>b.fecha.localeCompare(a.fecha));
-    return `<div class="hist-tienda-block">
-      <div class="hist-tienda-title">🏪 ${g.nombre}</div>
-      <div class="hist-row header"><span>Fecha</span><span>Producto</span><span>Marca</span><span>Cantidad</span><span style="text-align:right">Total</span></div>
-      ${sorted.map(r=>`<div class="hist-row">
-        <span>${new Date(r.fecha).toLocaleDateString('es-AR')}</span>
-        <span><strong>${r.nombre}</strong> <span class="tag gris" style="font-size:.7rem">${r.categoria}</span></span>
-        <span class="hist-marca">${sinMarca(r.categoria)?'':(r.marca||'—')}</span>
-        <span>${r.cantidad} ${r.unidad}</span>
-        <span class="hist-price">${r.esOferta?`$ ${fmt(r.precio)} (oferta)`:`$ ${fmt(r.total||r.precio)}`}</span>
-      </div>`).join('')}
-    </div>`;
+    return `<div class="hist-tienda-block"><div class="hist-tienda-title">🏪 ${g.nombre}</div>${sorted.map(r=>{
+      const marca=sinMarca(r.categoria)?'':(r.marca||'');
+      const totalStr=r.esOferta?`$ ${fmt(r.precio)} <small>(oferta)</small>`:`$ ${fmt(r.total||r.precio)}`;
+      return `<div class="hist-card"><div class="hist-card-left"><div class="hist-card-name">${r.nombre} <span class="tag gris" style="font-size:.7rem">${r.categoria}</span></div><div class="hist-card-meta">${r.cantidad} ${r.unidad}${marca?' · ':''}<span class="hist-card-marca">${marca}</span></div></div><div class="hist-card-right"><div class="hist-price">${totalStr}</div><div class="hist-date">${new Date(r.fecha).toLocaleDateString('es-AR')}</div></div></div>`;
+    }).join('')}</div>`;
   }).join('');
 }
 
-function render() {
+function render(){
   if(tabActual==='lista')     renderLista();
   if(tabActual==='catalogo')  renderCatalogo();
   if(tabActual==='tiendas')   renderTiendas();
