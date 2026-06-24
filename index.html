@@ -326,7 +326,7 @@ window.cambiarEstado=async(id,s)=>{
   await fsSet('lista',id,n);
   if(s==='comprado') await guardarHistorial(id,n);
 };
-window.setCantidad=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,cantidad:parseInt(v)||1};await fsSet('lista',id,n);await guardarHistorial(id,n);};
+window.setCantidad=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,cantidad:parseFloat(v)||1};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.setPrecio=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,precio:parseFloat(v)||0};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.toggleOferta=async(id)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,esOferta:!it.esOferta};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.setMarca=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;await fsSet('lista',id,{...it,marca:v.trim()});const h=historial.find(x=>x.sesionId===id);if(h)await fsSet('historial',h._id,{...h,marca:v.trim()});};
@@ -504,16 +504,31 @@ function renderCatalogo() {
   const catOpts=categorias.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
   const unOpts=['unidad','kg','g','litro','ml','docena','paquete','otro'].map(u=>`<option value="${u}">${u}</option>`).join('');
   const grupos={};productos.forEach(p=>{if(!grupos[p.categoria])grupos[p.categoria]=[];grupos[p.categoria].push(p);});
+  const unOpts2=(sel)=>['unidad','kg','g','litro','ml','docena','paquete','otro'].map(u=>`<option value="${u}"${u===sel?' selected':''}>${u}</option>`).join('');
+  const catOpts2=(sel)=>categorias.map(c=>`<option value="${c.nombre}"${c.nombre===sel?' selected':''}>${c.nombre}</option>`).join('');
   const prodHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,prods])=>`
     <div class="card" style="margin-bottom:.75rem"><h3>📂 ${cat}</h3>
       ${prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>`
-        <div class="product-list-item">
+        <div class="product-list-item" id="pli-${p._id}">
           <div><span style="font-weight:600">${p.nombre}</span>
             ${p.marcaDefault?`<span class="tag gris" style="margin-left:.4rem">${p.marcaDefault}</span>`:''}</div>
           <div style="display:flex;align-items:center;gap:.5rem">
             <span class="tag">${p.unidad}</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleEditProd('${p._id}')">✏️</button>
             <button class="btn btn-danger btn-sm" onclick="eliminarProducto('${p._id}')">✕</button>
-          </div></div>`).join('')}</div>`).join('');
+          </div>
+        </div>
+        <div id="edit-${p._id}" style="display:none;padding:.5rem .25rem .75rem;border-left:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0 0 6px 6px;background:var(--surface2)">
+          <div class="form-row" style="padding:0 .5rem">
+            <div class="form-group"><label>Nombre</label><input type="text" value="${p.nombre}" id="enombre-${p._id}"></div>
+            ${!sinMarca(p.categoria)?`<div class="form-group"><label>Marca</label><input type="text" value="${p.marcaDefault||''}" id="emarca-${p._id}"></div>`:''}
+            <div class="form-group"><label>Categoría</label><select id="ecat-${p._id}"><option value="">— Elegí —</option>${catOpts2(p.categoria)}</select></div>
+            <div class="form-group" style="max-width:115px"><label>Unidad</label><select id="eunidad-${p._id}">${unOpts2(p.unidad)}</select></div>
+            <div class="form-group" style="flex:0"><label>&nbsp;</label>
+              <button class="btn btn-primary btn-sm" onclick="guardarEditProd('${p._id}')">✓ Guardar</button>
+            </div>
+          </div>
+        </div>`).join('')}</div>`).join('');
   wrap.innerHTML=`
     <div class="card"><h2>Nueva categoría</h2>
       <div class="form-row">
@@ -538,6 +553,19 @@ window.agregarCategoria=async()=>{const inp=document.getElementById('inp-cat');c
 window.eliminarCategoria=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('categorias',id);};
 window.agregarProducto=async()=>{const n=document.getElementById('inp-prod').value.trim();const cat=document.getElementById('sel-cat-prod').value;const u=document.getElementById('sel-unidad').value;const m=sinMarca(cat)?'':(document.getElementById('inp-marca-prod')?.value.trim()||'');if(!n)return toast('Escribí el nombre');if(!cat)return toast('Seleccioná categoría');await fsSet('productos',uid(),{nombre:n,marcaDefault:m,categoria:cat,unidad:u});document.getElementById('inp-prod').value='';if(document.getElementById('inp-marca-prod'))document.getElementById('inp-marca-prod').value='';toast('Producto agregado');};
 window.eliminarProducto=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('productos',id);};
+window.toggleEditProd=(id)=>{const el=document.getElementById('edit-'+id);if(el)el.style.display=el.style.display==='none'?'block':'none';};
+window.guardarEditProd=async(id)=>{
+  const nombre=(document.getElementById('enombre-'+id)?.value||'').trim();
+  const cat=(document.getElementById('ecat-'+id)?.value||'').trim();
+  const unidad=(document.getElementById('eunidad-'+id)?.value||'').trim();
+  const marca=(document.getElementById('emarca-'+id)?.value||'').trim();
+  if(!nombre)return toast('El nombre no puede estar vacío');
+  if(!cat)return toast('Seleccioná una categoría');
+  const prod=productos.find(p=>p._id===id);
+  if(!prod)return;
+  await fsSet('productos',id,{...prod,nombre,categoria:cat,unidad,marcaDefault:marca});
+  toast('Producto actualizado');
+};
 
 // ══════════════════════════════════════════════════════════════
 //  TIENDAS
