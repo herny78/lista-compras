@@ -211,6 +211,10 @@
   </div>
   <div id="scanner-status" style="margin:.5rem 0">Abriendo cámara…</div>
   <input type="file" id="scanner-file-input" accept="image/*" capture="environment" style="display:none">
+  <div id="scanner-video-wrap" style="display:none;width:100%;max-width:420px;margin-top:.5rem">
+    <video id="scanner-video" autoplay playsinline muted style="width:100%;border-radius:10px;background:#000;max-height:260px;object-fit:cover"></video>
+    <button class="btn btn-primary" onclick="capturarDesktop()" style="width:100%;margin-top:.5rem;justify-content:center">📸 Capturar foto</button>
+  </div>
 
   <!-- Panel: producto encontrado -->
   <div id="scanner-result">
@@ -791,7 +795,18 @@ window.cerrarScanner = () => {
   document.getElementById('scanner-modal').classList.remove('open');
 };
 
+const esMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+let streamDesktop = null;
+
 function iniciarCamara() {
+  if (esMobile) {
+    iniciarCamaraMobile();
+  } else {
+    iniciarCamaraDesktop();
+  }
+}
+
+function iniciarCamaraMobile() {
   const input = document.getElementById('scanner-file-input');
   input.value = '';
   input.onchange = async (e) => {
@@ -802,20 +817,66 @@ function iniciarCamara() {
       const codigo = await decodificarBarcode(file);
       procesarCodigo(codigo);
     } catch(e) {
-      const el = document.getElementById('scanner-result');
-      el.classList.add('open');
-      document.getElementById('scanner-result-title').textContent = '⚠ No se pudo leer el código';
-      document.getElementById('scanner-result-body').innerHTML = '<div style="font-size:.85rem;color:var(--text-s)">Intentá con mejor iluminación, más cerca, o que el código ocupe bien el encuadre.</div>';
-      document.getElementById('scanner-result-actions').innerHTML =
-        `<button class="btn btn-primary btn-sm" onclick="rescanear()">📷 Intentar de nuevo</button>
-         <button class="btn btn-ghost btn-sm" onclick="cerrarScanner()">✕ Cerrar</button>`;
-      document.getElementById('scanner-status').textContent = '';
+      mostrarErrorScan();
     }
   };
   input.click();
 }
 
-function detenerCamara() { /* nativo — nada que detener */ }
+async function iniciarCamaraDesktop() {
+  const wrap = document.getElementById('scanner-video-wrap');
+  const video = document.getElementById('scanner-video');
+  wrap.style.display = 'block';
+  document.getElementById('scanner-status').textContent = 'Iniciando cámara…';
+  try {
+    streamDesktop = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = streamDesktop;
+    document.getElementById('scanner-status').textContent = 'Encuadrá el código y capturá la foto.';
+  } catch(e) {
+    wrap.style.display = 'none';
+    document.getElementById('scanner-status').textContent = 'No se pudo acceder a la cámara.';
+    mostrarErrorScan();
+  }
+}
+
+window.capturarDesktop = async () => {
+  const video = document.getElementById('scanner-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  document.getElementById('scanner-status').textContent = 'Procesando imagen…';
+  canvas.toBlob(async blob => {
+    try {
+      const codigo = await decodificarBarcode(blob);
+      procesarCodigo(codigo);
+    } catch(e) {
+      mostrarErrorScan();
+    }
+  }, 'image/jpeg', 0.95);
+};
+
+function mostrarErrorScan() {
+  const el = document.getElementById('scanner-result');
+  el.classList.add('open');
+  document.getElementById('scanner-result-title').textContent = '⚠ No se pudo leer el código';
+  document.getElementById('scanner-result-body').innerHTML = '<div style="font-size:.85rem;color:var(--text-s)">Intentá con mejor iluminación, más cerca, o que el código ocupe bien el encuadre.</div>';
+  document.getElementById('scanner-result-actions').innerHTML =
+    `<button class="btn btn-primary btn-sm" onclick="rescanear()">📷 Intentar de nuevo</button>
+     <button class="btn btn-ghost btn-sm" onclick="cerrarScanner()">✕ Cerrar</button>`;
+  document.getElementById('scanner-status').textContent = '';
+}
+
+function detenerCamara() {
+  if (streamDesktop) {
+    streamDesktop.getTracks().forEach(t => t.stop());
+    streamDesktop = null;
+  }
+  const wrap = document.getElementById('scanner-video-wrap');
+  if (wrap) wrap.style.display = 'none';
+  const video = document.getElementById('scanner-video');
+  if (video) video.srcObject = null;
+}
 
 async function decodificarBarcode(file) {
   // Intento 1: API nativa del navegador (Brave/Chrome Android, Edge)
