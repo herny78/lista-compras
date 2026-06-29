@@ -343,7 +343,7 @@ function renderLista() {
         const fl=it.esOferta?`${it.cantidad} ${it.unidad||'u'} = $ ${fmt(it.precio)} <strong>(oferta)</strong>`:`${it.cantidad} ${it.unidad||'u'} × $ ${fmt(it.precio||0)} = $ ${fmt(calcTotal(it))}`;
         ctrl=`<div class="item-controls"><input class="inp-cant" type="number" value="${it.cantidad||1}" min="1" step="1" onchange="setCantidad('${it._id}',this.value)" onclick="this.select()"><span class="unidad-label">${it.unidad||'u'}</span><input class="inp-precio" type="number" value="${it.precio||''}" placeholder="$ precio" min="0" step="1" onchange="setPrecio('${it._id}',this.value)" onclick="this.select()"><button class="oferta-btn ${it.esOferta?'activo':''}" onclick="toggleOferta('${it._id}')">⚡ Oferta</button>${mf}</div><div class="formula-label">${fl}</div>`;
       }else{
-        ctrl=`<div class="item-qty-label">${it.cantidad} ${it.unidad||'u'}</div>`;
+        ctrl=`<div class="item-controls"><input class="inp-cant" type="number" value="${it.cantidad||1}" min="0.1" step="1" onchange="setCantidadFalta('${it._id}',this.value)" onclick="this.select()"><span class="unidad-label">${it.unidad||'u'}</span></div>`;
       }
       return `<div class="item-row ${it.estado}" data-id="${it._id}">
         <button class="estado-btn ${it.estado}" onclick="cambiarEstado('${it._id}','${sig}')">${icono}</button>
@@ -413,6 +413,7 @@ window.cambiarEstado=async(id,s)=>{
   if(s==='comprado') await guardarHistorial(id,n);
 };
 window.setCantidad=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,cantidad:parseFloat(v)||1};await fsSet('lista',id,n);await guardarHistorial(id,n);};
+window.setCantidadFalta=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;await fsSet('lista',id,{...it,cantidad:parseFloat(v)||1});};
 window.setPrecio=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,precio:parseFloat(v)||0};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.toggleOferta=async(id)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,esOferta:!it.esOferta};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.setMarca=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;await fsSet('lista',id,{...it,marca:v.trim()});const h=historial.find(x=>x.sesionId===id);if(h)await fsSet('historial',h._id,{...h,marca:v.trim()});};
@@ -683,7 +684,7 @@ function renderHistorial() {
     return `<div class="hist-tienda-block"><div class="hist-tienda-title">🏪 ${g.nombre}</div>
       ${sorted.map(r=>{
         const marca=sinMarca(r.categoria)?'':(r.marca||'');
-        const totalStr=r.esOferta?`$ ${fmt(r.precio)} <small>(oferta)</small>`:`$ ${fmt(r.total||r.precio)}`;
+        const totalStr=r.esOferta?`$ ${fmt(r.precio)} <small>(oferta)</small>`:`$ ${fmt(r.precio)} <small>c/u · total $ ${fmt(r.total||r.precio)}</small>`;
         return `<div class="hist-card">
           <div class="hist-card-left">
             <div class="hist-card-name">${r.nombre} <span class="tag gris" style="font-size:.7rem">${r.categoria}</span></div>
