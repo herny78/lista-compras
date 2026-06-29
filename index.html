@@ -87,11 +87,15 @@
     .tag.gris { background:#e2e8f0; color:#334155; }
     .product-list-item { display:flex; align-items:center; justify-content:space-between; padding:.5rem .25rem; border-bottom:1px solid var(--border); gap:.5rem; }
     .product-list-item:last-child { border-bottom:none; }
+
+    /* Stock badge en lista */
     .stock-badge { display:inline-flex; align-items:center; gap:.2rem; font-size:.72rem; font-weight:700; padding:.15rem .45rem; border-radius:20px; white-space:nowrap; }
     .stock-badge.verde  { background:#dcfce7; color:#15803d; }
     .stock-badge.naranja { background:#fef3c7; color:#92400e; }
     .stock-badge.rojo   { background:#fee2e2; color:#991b1b; }
     .stock-badge.sin    { background:#f1f5f9; color:#94a3b8; }
+
+    /* Pestaña Stock */
     .stock-row { display:flex; align-items:center; gap:.5rem; padding:.6rem .25rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
     .stock-row:last-child { border-bottom:none; }
     .stock-prod-name { font-size:.9rem; font-weight:600; flex:1; min-width:120px; }
@@ -108,6 +112,8 @@
     .resumen-chip.verde  { background:#dcfce7; color:#15803d; }
     .resumen-chip.naranja { background:#fef3c7; color:#92400e; }
     .resumen-chip.rojo   { background:#fee2e2; color:#991b1b; }
+
+    /* Historial */
     .hist-tienda-block { margin-bottom:1rem; }
     .hist-tienda-title { font-size:.95rem; font-weight:700; color:var(--primary); padding:.4rem .75rem; background:#e8edf5; border:1px solid #94a3b8; border-radius:8px 8px 0 0; border-bottom:2px solid var(--primary); }
     .hist-card { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; padding:.6rem .75rem; border-left:1px solid #94a3b8; border-right:1px solid #94a3b8; border-bottom:1px solid #94a3b8; background:var(--surface); }
@@ -136,12 +142,10 @@
     .user-avatar { width:28px; height:28px; border-radius:50%; border:2px solid rgba(255,255,255,.5); }
     .user-name { font-size:.78rem; color:rgba(255,255,255,.9); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     @media (min-width:640px) { main { padding:1.5rem; } .form-row { flex-wrap:nowrap; } }
+
+    /* Scanner modal */
     #scanner-modal { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:500; display:none; flex-direction:column; align-items:center; justify-content:flex-start; padding:1rem; overflow-y:auto; }
     #scanner-modal.open { display:flex; }
-    #scanner-video-wrap { position:relative; width:100%; max-width:420px; border-radius:12px; overflow:hidden; background:#000; aspect-ratio:4/3; }
-    #scanner-video { width:100%; height:100%; object-fit:cover; display:block; }
-    .scanner-line { position:absolute; left:10%; right:10%; top:50%; height:2px; background:rgba(37,99,235,.85); box-shadow:0 0 8px rgba(37,99,235,.8); animation:scanline 2s ease-in-out infinite; }
-    @keyframes scanline { 0%,100%{top:30%} 50%{top:70%} }
     #scanner-status { color:#fff; font-size:.9rem; margin:.75rem 0 .5rem; text-align:center; min-height:1.4em; }
     #scanner-result { background:var(--surface); border-radius:10px; width:100%; max-width:420px; padding:1rem; margin-top:.5rem; display:none; }
     #scanner-result.open { display:block; }
@@ -199,21 +203,23 @@
 </div>
 <div id="toast"></div>
 
+<!-- Modal escáner -->
 <div id="scanner-modal">
   <div style="display:flex;justify-content:space-between;align-items:center;width:100%;max-width:420px;margin-bottom:.5rem">
     <span style="color:#fff;font-weight:700;font-size:1rem">📷 Escanear producto</span>
     <button onclick="cerrarScanner()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;cursor:pointer;font-size:.85rem">✕ Cerrar</button>
   </div>
-  <div id="scanner-video-wrap">
-    <video id="scanner-video" autoplay muted playsinline></video>
-    <div class="scanner-line"></div>
-  </div>
-  <div id="scanner-status">Apuntá la cámara al código de barras…</div>
+  <div id="scanner-status" style="margin:.5rem 0">Abriendo cámara…</div>
+  <input type="file" id="scanner-file-input" accept="image/*" capture="environment" style="display:none">
+
+  <!-- Panel: producto encontrado -->
   <div id="scanner-result">
     <h3 id="scanner-result-title">Producto encontrado</h3>
     <div id="scanner-result-body"></div>
     <div class="scan-btn-row" id="scanner-result-actions"></div>
   </div>
+
+  <!-- Panel: carga manual -->
   <div id="scanner-manual">
     <h3 id="scanner-manual-title">Cargar producto manualmente</h3>
     <div class="form-row" style="flex-direction:column;gap:.6rem">
@@ -237,6 +243,7 @@
 </div>
 
 <script>
+// ── Helpers ───────────────────────────────────────────────────
 function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function toast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function sinMarca(cat) { const c=(cat||'').toLowerCase(); return c.includes('carnicer')||c.includes('verduler')||c.includes('pescader'); }
@@ -244,6 +251,7 @@ function calcTotal(it) { if(!it.precio||it.estado!=='comprado') return 0; return
 function fmt(n) { return parseFloat(n||0).toLocaleString('es-AR'); }
 function syncStatus(txt,err) { const el=document.getElementById('sync-status'); if(!el) return; el.textContent=txt; el.style.background=err?'rgba(220,38,38,.4)':'rgba(255,255,255,.2)'; }
 
+// ── Estado ────────────────────────────────────────────────────
 let categorias=[], productos=[], tiendas=[], lista=[], historial=[], stock=[];
 let listenersOk=0;
 let filtroCatLista='';
@@ -251,11 +259,13 @@ let filtroCatStock='';
 let currentUser=null;
 let unsubscribers=[];
 
+// ── Firebase ──────────────────────────────────────────────────
 firebase.initializeApp(FIREBASE_CONFIG);
 const db=firebase.firestore();
 const auth=firebase.auth();
 const googleProvider=new firebase.auth.GoogleAuthProvider();
 
+// ── Auth ──────────────────────────────────────────────────────
 window.loginGoogle=()=>auth.signInWithPopup(googleProvider).catch(e=>toast('Error al iniciar sesión'));
 window.cerrarSesion=async()=>{
   if(!confirm('¿Cerrar sesión?')) return;
@@ -269,11 +279,14 @@ auth.onAuthStateChanged(async user=>{
     currentUser=user;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('loading').style.display='flex';
+    // Mostrar avatar
     const av=document.getElementById('user-avatar');
     const nm=document.getElementById('user-name');
     if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
     if(nm) nm.textContent=user.displayName?.split(' ')[0]||'';
+    // Migrar datos sin userId
     await migrarDatos(user.uid);
+    // Iniciar listeners
     iniciarListeners(user.uid);
   } else {
     currentUser=null;
@@ -289,6 +302,7 @@ async function migrarDatos(uid) {
   const cols=['categorias','productos','tiendas','lista','historial','stock'];
   for(const col of cols){
     const snap=await db.collection(col).where('userId','==',null).get().catch(()=>({docs:[]}));
+    // Firestore no permite where null, buscamos docs sin campo userId
     const snap2=await db.collection(col).get();
     const sinUsuario=snap2.docs.filter(d=>!d.data().userId);
     if(sinUsuario.length){
@@ -322,6 +336,7 @@ async function fsSet(col,id,data){
 }
 async function fsDel(col,id){await db.collection(col).doc(id).delete();}
 
+// ── Tabs ──────────────────────────────────────────────────────
 let tabActual='lista';
 function switchTab(tab){
   tabActual=tab;
@@ -331,6 +346,7 @@ function switchTab(tab){
 }
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 
+// ── Stock helpers ─────────────────────────────────────────────
 function getStock(productoId) { return stock.find(s=>s.productoId===productoId); }
 
 function stockClase(s) {
@@ -359,6 +375,9 @@ async function sumarStock(productoId, cantidad, unidad) {
   await fsSet('stock', id, {...base, cantidad: nueva});
 }
 
+// ══════════════════════════════════════════════════════════════
+//  LISTA
+// ══════════════════════════════════════════════════════════════
 function renderLista() {
   const wrap=document.getElementById('tab-lista');
   const total=lista.reduce((s,i)=>s+calcTotal(i),0);
@@ -456,7 +475,7 @@ window.setPrecio=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;
 window.toggleOferta=async(id)=>{const it=lista.find(i=>i._id===id);if(!it)return;const n={...it,esOferta:!it.esOferta};await fsSet('lista',id,n);await guardarHistorial(id,n);};
 window.setMarca=async(id,v)=>{const it=lista.find(i=>i._id===id);if(!it)return;await fsSet('lista',id,{...it,marca:v.trim()});const h=historial.find(x=>x.sesionId===id);if(h)await fsSet('historial',h._id,{...h,marca:v.trim()});};
 window.setTiendaCategoria=async(cat,tid)=>{const items=lista.filter(i=>i.categoria===cat);await Promise.all(items.map(it=>fsSet('lista',it._id,{...it,tiendaId:tid})));const hs=historial.filter(h=>items.some(i=>i._id===h.sesionId));await Promise.all(hs.map(h=>fsSet('historial',h._id,{...h,tiendaId:tid})));};
-window.quitarItem=async id=>{if(!confirm('¿Quitar este ítem de la lista?'))return;await fsDel('lista',id);toast('Quitado');};
+window.quitarItem=async id=>{if(!confirm('¿Quitár este ítem de la lista?'))return;await fsDel('lista',id);toast('Quitado');};
 window.limpiarComprados=async()=>{const c=lista.filter(i=>i.estado==='comprado');if(!c.length)return;if(!confirm(`¿Eliminar ${c.length} ítem${c.length>1?'s':''} comprado${c.length>1?'s':''}?`))return;await Promise.all(c.map(i=>fsDel('lista',i._id)));toast(`${c.length} eliminados`);};
 window.vaciarLista=async()=>{if(!confirm('¿Vaciar toda la lista?'))return;await Promise.all(lista.map(i=>fsDel('lista',i._id)));toast('Lista vaciada');};
 
@@ -465,21 +484,30 @@ async function guardarHistorial(id,it){
   const h=historial.find(x=>x.sesionId===id);
   const esNuevo=!h;
   await fsSet('historial',h?h._id:uid(),{sesionId:id,productoId:it.productoId,nombre:it.nombre,categoria:it.categoria,precio:it.precio,total:calcTotal(it),cantidad:it.cantidad,unidad:it.unidad||'u',esOferta:it.esOferta||false,marca:it.marca||'',tiendaId:it.tiendaId||'',fecha:new Date().toISOString()});
+  // Suma al stock solo la primera vez que se carga el precio
   if(esNuevo) await sumarStock(it.productoId, it.cantidad, it.unidad);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  STOCK
+// ══════════════════════════════════════════════════════════════
 function renderStock() {
   const wrap=document.getElementById('tab-stock');
+
+  // Resumen
   const conStock = stock.filter(s=>s.cantidad!==undefined);
   const rojos   = conStock.filter(s=>stockClase(s)==='rojo').length;
   const naranjas= conStock.filter(s=>stockClase(s)==='naranja').length;
   const verdes  = conStock.filter(s=>stockClase(s)==='verde').length;
+
   const resumen = conStock.length===0 ? '' : `
     <div class="stock-resumen">
       ${rojos>0   ?`<div class="resumen-chip rojo">🔴 ${rojos} agotado${rojos>1?'s':''}</div>`:''}
       ${naranjas>0?`<div class="resumen-chip naranja">🟡 ${naranjas} bajo${naranjas>1?'s':''}</div>`:''}
       ${verdes>0  ?`<div class="resumen-chip verde">🟢 ${verdes} OK</div>`:''}
     </div>`;
+
+  // Selector de categoría
   const catOpts=categorias.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
     .map(c=>`<option value="${c.nombre}"${filtroCatStock===c.nombre?' selected':''}>${c.nombre}</option>`).join('');
   const filtroCatHTML=`<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem">
@@ -488,11 +516,14 @@ function renderStock() {
       <option value="">— Todas —</option>${catOpts}
     </select>
   </div>`;
+
+  // Agrupar productos por categoría (respetando filtro)
   const grupos={};
   productos.filter(p=>!filtroCatStock||p.categoria===filtroCatStock).forEach(p=>{
     if(!grupos[p.categoria])grupos[p.categoria]=[];
     grupos[p.categoria].push(p);
   });
+
   const gruposHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cat,prods])=>{
     const catSlug=encodeURIComponent(cat);
     const rows=prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>{
@@ -532,6 +563,7 @@ function renderStock() {
         <button class="btn btn-ghost btn-sm" onclick="resetearCategoria('${catSlug}')">📋 Borrar valores</button>
       </div>${rows}</div>`;
   }).join('');
+
   wrap.innerHTML=`
     <div class="card" style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;border:none">
       <div style="font-size:.85rem;opacity:.85;margin-bottom:.3rem">Control de inventario</div>
@@ -562,18 +594,28 @@ window.setStockCantidad=async(productoId, unidad, valor)=>{
   const cantidad=parseFloat(valor)||0;
   const umbRojo=parseFloat(base.umbralRojo??0);
   await fsSet('stock',id,{...base,cantidad});
+
   if(cantidad<=umbRojo){
+    // Stock en rojo (≤ umbralRojo) → agregar a la lista si no está
     const yaEnLista=lista.some(i=>i.productoId===productoId);
     if(!yaEnLista){
       const prod=productos.find(p=>p._id===productoId);
       if(prod){
-        await fsSet('lista',uid(),{productoId:prod._id,nombre:prod.nombre,categoria:prod.categoria,unidad:prod.unidad,cantidad:1,estado:'falta',precio:'',marca:'',esOferta:false,tiendaId:''});
+        await fsSet('lista',uid(),{
+          productoId:prod._id, nombre:prod.nombre, categoria:prod.categoria,
+          unidad:prod.unidad, cantidad:1, estado:'falta',
+          precio:'', marca:'', esOferta:false, tiendaId:''
+        });
         toast(`${prod.nombre} agregado a la lista (stock bajo)`);
       }
     }
   } else {
+    // Stock suficiente → sacar de la lista si todavía está en "falta"
     const enLista=lista.find(i=>i.productoId===productoId && i.estado==='falta');
-    if(enLista){ await fsDel('lista',enLista._id); toast(`${enLista.nombre} quitado de la lista (stock actualizado)`); }
+    if(enLista){
+      await fsDel('lista', enLista._id);
+      toast(`${enLista.nombre} quitado de la lista (stock actualizado)`);
+    }
   }
 };
 
@@ -581,7 +623,10 @@ window.resetearCategoria=async(catSlug)=>{
   const cat=decodeURIComponent(catSlug);
   if(!confirm(`¿Borrar valores de stock de "${cat}"?`)) return;
   const prods=productos.filter(p=>p.categoria===cat);
-  await Promise.all(prods.map(async p=>{const s=getStock(p._id);if(s) await fsSet('stock',s._id,{...s,cantidad:null});}));
+  await Promise.all(prods.map(async p=>{
+    const s=getStock(p._id);
+    if(s) await fsSet('stock',s._id,{...s,cantidad:null});
+  }));
   toast(`Valores de ${cat} borrados`);
 };
 
@@ -598,6 +643,9 @@ window.setUmbral=async(productoId, tipo, valor)=>{
   await fsSet('stock',s._id,{...s,[key]:parseFloat(valor)||0});
 };
 
+// ══════════════════════════════════════════════════════════════
+//  CATÁLOGO
+// ══════════════════════════════════════════════════════════════
 function renderCatalogo() {
   const wrap=document.getElementById('tab-catalogo');
   const catOpts=categorias.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
@@ -669,6 +717,9 @@ window.guardarEditProd=async(id)=>{
   toast('Producto actualizado');
 };
 
+// ══════════════════════════════════════════════════════════════
+//  TIENDAS
+// ══════════════════════════════════════════════════════════════
 function renderTiendas() {
   document.getElementById('tab-tiendas').innerHTML=`
     <div class="card"><h2>Nueva tienda / mercado</h2>
@@ -683,6 +734,9 @@ function renderTiendas() {
 window.agregarTienda=async()=>{const inp=document.getElementById('inp-tienda');const n=inp.value.trim();if(!n)return toast('Escribí el nombre');await fsSet('tiendas',uid(),{nombre:n});inp.value='';toast('Tienda agregada');};
 window.eliminarTienda=async id=>{if(!confirm('¿Eliminar?'))return;await fsDel('tiendas',id);};
 
+// ══════════════════════════════════════════════════════════════
+//  HISTORIAL
+// ══════════════════════════════════════════════════════════════
 function renderHistorial() {
   const wrap=document.getElementById('tab-historial');
   if(!historial.length){wrap.innerHTML='<div class="empty">Acá vas a ver el historial agrupado por tienda.<br>Completá una compra para empezar.</div>';return;}
@@ -708,7 +762,10 @@ function renderHistorial() {
   }).join('');
 }
 
-let scannerCtx = null;
+// ══════════════════════════════════════════════════════════════
+//  SCANNER
+// ══════════════════════════════════════════════════════════════
+let scannerCtx = null; // 'stock' | 'lista' | 'catalogo'
 let scannerReader = null;
 let scannerStream = null;
 let scannerActivo = false;
@@ -720,6 +777,7 @@ window.abrirScanner = (ctx) => {
   document.getElementById('scanner-result').classList.remove('open');
   document.getElementById('scanner-manual').classList.remove('open');
   document.getElementById('scanner-status').textContent = 'Apuntá la cámara al código de barras…';
+  // Poblar select de categorías
   const sel = document.getElementById('scan-sel-cat');
   sel.innerHTML = '<option value="">— Elegí —</option>' +
     categorias.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre))
@@ -733,44 +791,55 @@ window.cerrarScanner = () => {
   document.getElementById('scanner-modal').classList.remove('open');
 };
 
-async function iniciarCamara() {
-  try {
-    const hints = new Map();
-    const formats = [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.QR_CODE
-    ];
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-    scannerReader = new ZXing.BrowserMultiFormatReader(hints);
-    const video = document.getElementById('scanner-video');
-    const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-    const back = devices.find(d => /back|rear|trasera|environment/i.test(d.label)) || devices[devices.length-1];
-    const deviceId = back ? back.deviceId : undefined;
-    scannerStream = await scannerReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      if (!scannerActivo) return;
-      if (result) {
-        scannerActivo = false;
-        procesarCodigo(result.getText());
-      }
-    });
-  } catch(e) {
-    document.getElementById('scanner-status').textContent = '⚠ No se pudo acceder a la cámara. Verificá los permisos.';
-  }
+function iniciarCamara() {
+  const input = document.getElementById('scanner-file-input');
+  input.value = '';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) { document.getElementById('scanner-status').textContent = 'Cancelado.'; return; }
+    document.getElementById('scanner-status').textContent = 'Procesando imagen…';
+    const url = URL.createObjectURL(file);
+    try {
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+        ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+        ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+        ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.QR_CODE
+      ]);
+      const reader = new ZXing.BrowserMultiFormatReader(hints);
+      const result = await reader.decodeFromImageUrl(url);
+      URL.revokeObjectURL(url);
+      procesarCodigo(result.getText());
+    } catch(e) {
+      URL.revokeObjectURL(url);
+      const el = document.getElementById('scanner-result');
+      el.classList.add('open');
+      document.getElementById('scanner-result-title').textContent = '⚠ No se pudo leer el código';
+      document.getElementById('scanner-result-body').innerHTML = '<div style="font-size:.85rem;color:var(--text-s)">Intentá con mejor iluminación, más cerca, o que el código ocupe bien el encuadre.</div>';
+      document.getElementById('scanner-result-actions').innerHTML =
+        `<button class="btn btn-primary btn-sm" onclick="rescanear()">📷 Intentar de nuevo</button>
+         <button class="btn btn-ghost btn-sm" onclick="cerrarScanner()">✕ Cerrar</button>`;
+      document.getElementById('scanner-status').textContent = '';
+    }
+  };
+  input.click();
 }
 
-function detenerCamara() {
-  try {
-    if (scannerReader) { scannerReader.reset(); scannerReader = null; }
-  } catch(e) {}
-}
+function detenerCamara() { /* nativo — nada que detener */ }
 
 async function procesarCodigo(barcode) {
   detenerCamara();
   document.getElementById('scanner-status').textContent = `Código: ${barcode} — buscando…`;
+
+  // 1. Buscar en catálogo propio
   const prodLocal = productos.find(p => p.barcode === barcode);
-  if (prodLocal) { mostrarResultadoLocal(prodLocal); return; }
+  if (prodLocal) {
+    mostrarResultadoLocal(prodLocal);
+    return;
+  }
+
+  // 2. Buscar en Open Food Facts
   document.getElementById('scanner-status').textContent = 'No está en tu catálogo. Consultando base global…';
   try {
     const resp = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
@@ -783,6 +852,8 @@ async function procesarCodigo(barcode) {
       return;
     }
   } catch(e) {}
+
+  // 3. No encontrado en ningún lado → carga manual
   mostrarManual(barcode, '', '');
 }
 
@@ -793,6 +864,7 @@ function mostrarResultadoLocal(prod) {
   document.getElementById('scanner-result-body').innerHTML = `
     <div style="font-weight:700;font-size:1rem">${prod.nombre}</div>
     <div style="font-size:.8rem;color:var(--text-s);margin-top:.2rem">${prod.categoria} · ${prod.unidad}${prod.marcaDefault?' · '+prod.marcaDefault:''}</div>`;
+
   let actions = '';
   if (scannerCtx === 'stock') {
     actions = `<div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
@@ -853,6 +925,7 @@ window.guardarProductoEscaneado = async () => {
   await fsSet('productos', id, { nombre, marcaDefault: marca, categoria: cat, unidad, barcode });
   toast('Producto guardado en tu catálogo');
   document.getElementById('scanner-manual').classList.remove('open');
+  // Ejecutar acción según contexto
   const prod = { _id: id, nombre, marcaDefault: marca, categoria: cat, unidad, barcode };
   if (scannerCtx === 'stock') {
     mostrarResultadoLocal(prod);
@@ -891,6 +964,7 @@ function rescanear() {
   iniciarCamara();
 }
 
+// ── Render global ─────────────────────────────────────────────
 function render() {
   if(tabActual==='lista')     renderLista();
   if(tabActual==='stock')     renderStock();
