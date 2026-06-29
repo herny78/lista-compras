@@ -826,35 +826,36 @@ function iniciarCamaraMobile() {
 async function iniciarCamaraDesktop() {
   const wrap = document.getElementById('scanner-video-wrap');
   const video = document.getElementById('scanner-video');
+  const capBtn = wrap.querySelector('button');
+  if (capBtn) capBtn.style.display = 'none';
   wrap.style.display = 'block';
   document.getElementById('scanner-status').textContent = 'Iniciando cámara…';
+
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.QR_CODE
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  scannerReader = new ZXing.BrowserMultiFormatReader(hints);
+
   try {
-    streamDesktop = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    video.srcObject = streamDesktop;
-    document.getElementById('scanner-status').textContent = 'Encuadrá el código y capturá la foto.';
+    await scannerReader.decodeFromVideoDevice(null, video, (result, err) => {
+      if (result && scannerActivo) {
+        scannerActivo = false;
+        procesarCodigo(result.getText());
+      }
+    });
+    document.getElementById('scanner-status').textContent = 'Apuntá la cámara al código de barras…';
   } catch(e) {
     wrap.style.display = 'none';
-    document.getElementById('scanner-status').textContent = 'No se pudo acceder a la cámara.';
-    mostrarErrorScan();
+    document.getElementById('scanner-status').textContent = 'No se pudo acceder a la cámara. Verificá los permisos en Brave.';
   }
 }
 
-window.capturarDesktop = async () => {
-  const video = document.getElementById('scanner-video');
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  document.getElementById('scanner-status').textContent = 'Procesando imagen…';
-  canvas.toBlob(async blob => {
-    try {
-      const codigo = await decodificarBarcode(blob);
-      procesarCodigo(codigo);
-    } catch(e) {
-      mostrarErrorScan();
-    }
-  }, 'image/jpeg', 0.95);
-};
+window.capturarDesktop = () => {};
 
 function mostrarErrorScan() {
   const el = document.getElementById('scanner-result');
